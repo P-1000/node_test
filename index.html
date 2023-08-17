@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Authentication</title>
+</head>
+<body>
+  <h1>Email Authentication</h1>
+  
+  <div id="emailForm">
+    <label for="email">Enter your email:</label>
+    <input type="email" id="email" required>
+    <button id="submitEmail">Submit</button>
+  </div>
+  
+  <div id="otpForm" style="display: none;">
+    <label for="otp">Enter the OTP sent to your email:</label>
+    <input type="text" id="otp" required>
+    <button id="submitOTP">Submit OTP</button>
+  </div>
+  
+  <div id="authStatus" style="display: none;">
+    <p id="statusMessage"></p>
+    <button id="copyText" style="display: none;">Copy Text</button>
+    <p id="contactAdmin" style="display: none;">Please contact admin for access.</p>
+  </div>
+  
+  <script>
+    // Function to show or hide elements
+    function showElement(id) {
+      document.getElementById(id).style.display = 'block';
+    }
+
+    function hideElement(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    // Check if user is authenticated from localStorage
+    const isAuthenticated = localStorage.getItem('authenticated') === 'true';
+    if (isAuthenticated) {
+      hideElement('emailForm');
+      showElement('authStatus');
+      
+      const copyTextButton = document.getElementById('copyText');
+      copyTextButton.style.display = 'block';
+    } else {
+      hideElement('otpForm');
+      hideElement('authStatus');
+      showElement('emailForm');
+    }
+
+    // Event listener for submitting email
+    document.getElementById('submitEmail').addEventListener('click', async () => {
+      const email = document.getElementById('email').value;
+
+      // Send request to generate OTP and send email
+      const response = await fetch('http://localhost:3000/otp/mail', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email })
+      });
+
+      if (response.ok) {
+        hideElement('emailForm');
+        showElement('otpForm');
+      }
+    });
+    
+    // Event listener for submitting OTP
+    document.getElementById('submitOTP').addEventListener('click', async () => {
+      const otp = document.getElementById('otp').value;
+      const email = document.getElementById('email').value;
+
+      // Send request to verify OTP
+      const otpResponse = await fetch('http://localhost:3000/otp/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ otp, email })
+      });
+
+      if (otpResponse.ok) {
+        // Send request to check authentication status
+        const authResponse = await fetch(`http://localhost:3000/otp/auth/${email}`);
+        const authData = await authResponse.json();
+
+        if (authData.authenticated) {
+          localStorage.setItem('authenticated', 'true'); // Save authentication status
+          hideElement('otpForm');
+          hideElement('emailForm');
+          showElement('authStatus');
+          const copyTextButton = document.getElementById('copyText');
+          copyTextButton.style.display = 'block';
+        } else {
+          hideElement('otpForm');
+          hideElement('authStatus');
+          showElement('emailForm');
+          const contactAdminMessage = document.getElementById('contactAdmin');
+          contactAdminMessage.style.display = 'block';
+        }
+      }
+    });
+
+    // Event listener for copy text button
+    document.getElementById('copyText').addEventListener('click', () => {
+      // Implement copying text logic here
+    });
+  </script>
+</body>
+</html>
