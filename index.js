@@ -82,7 +82,7 @@ app.post('/otp/mail/', async (req, res) => {
 
   const mailOptions = {
     from: 'flashpostmail@gmail.com',
-    to: userMail,
+    to: 'taskmate3@gmail.com' ,
     subject: 'OTP Mail',
     html: `
       <!DOCTYPE html>

@@ -26,8 +26,9 @@
     <p id="contactAdmin" style="display: none;">Please contact admin for access.</p>
   </div>
   
+  <div id="loading" style="display: none;">Loading...</div>
+  
   <script>
-    // Function to show or hide elements
     function showElement(id) {
       document.getElementById(id).style.display = 'block';
     }
@@ -36,60 +37,76 @@
       document.getElementById(id).style.display = 'none';
     }
 
-    // Check if user is authenticated from localStorage
-    const isAuthenticated = localStorage.getItem('authenticated') === 'true';
-    if (isAuthenticated) {
-      hideElement('emailForm');
-      showElement('authStatus');
-      
-      const copyTextButton = document.getElementById('copyText');
-      copyTextButton.style.display = 'block';
-    } else {
-      hideElement('otpForm');
-      hideElement('authStatus');
-      showElement('emailForm');
+    async function checkAuthStatus(email) {
+      showElement('loading');
+      const authResponse = await fetch(`https://apiexamly.onrender.com/otp/auth/${email}`);
+      const authData = await authResponse.json();
+      hideElement('loading');
+      return authData.authenticated;
     }
 
-    // Event listener for submitting email
+    async function initialize() {
+      const savedEmail = localStorage.getItem('email');
+      
+      if (savedEmail) {
+        const isAuthenticated = await checkAuthStatus(savedEmail);
+
+        if (isAuthenticated) {
+          hideElement('emailForm');
+          showElement('authStatus');
+
+          const copyTextButton = document.getElementById('copyText');
+          copyTextButton.style.display = 'block';
+        } else {
+          hideElement('otpForm');
+          hideElement('authStatus');
+          showElement('emailForm');
+        }
+      } else {
+        hideElement('otpForm');
+        hideElement('authStatus');
+        showElement('emailForm');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', initialize);
+
     document.getElementById('submitEmail').addEventListener('click', async () => {
       const email = document.getElementById('email').value;
-
-      // Send request to generate OTP and send email
-      const response = await fetch('http://localhost:3000/otp/mail', {
+      showElement('loading');
+      const response = await fetch('https://apiexamly.onrender.com/otp/mail', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ email })
       });
+      hideElement('loading');
 
       if (response.ok) {
         hideElement('emailForm');
         showElement('otpForm');
       }
     });
-    
-    // Event listener for submitting OTP
+
     document.getElementById('submitOTP').addEventListener('click', async () => {
       const otp = document.getElementById('otp').value;
       const email = document.getElementById('email').value;
-
-      // Send request to verify OTP
-      const otpResponse = await fetch('http://localhost:3000/otp/verify', {
+      showElement('loading');
+      const otpResponse = await fetch('https://apiexamly.onrender.com/otp/verify', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ otp, email })
       });
+      hideElement('loading');
 
       if (otpResponse.ok) {
-        // Send request to check authentication status
-        const authResponse = await fetch(`http://localhost:3000/otp/auth/${email}`);
-        const authData = await authResponse.json();
+        const isAuthenticated = await checkAuthStatus(email);
 
-        if (authData.authenticated) {
-          localStorage.setItem('authenticated', 'true'); // Save authentication status
+        if (isAuthenticated) {
+          localStorage.setItem('email', email);
           hideElement('otpForm');
           hideElement('emailForm');
           showElement('authStatus');
@@ -105,7 +122,6 @@
       }
     });
 
-    // Event listener for copy text button
     document.getElementById('copyText').addEventListener('click', () => {
       // Implement copying text logic here
     });
